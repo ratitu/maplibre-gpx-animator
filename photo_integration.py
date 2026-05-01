@@ -44,9 +44,20 @@ def extract_timestamp_from_photo(photo_path: str) -> Optional[datetime]:
         with open(photo_path, 'rb') as f:
             tags = exifread.process_file(f, details=False)
 
+        if 'GPS GPSDateStamp' in tags and 'GPS GPSTimeStamp' in tags:
+            date_str = str(tags['GPS GPSDateStamp'].values)
+            time_tag = tags['GPS GPSTimeStamp'].values
+
+            hour = int(time_tag[0].num) if hasattr(time_tag[0], 'num') else int(time_tag[0])
+            minute = int(time_tag[1].num) if len(time_tag) > 1 and hasattr(time_tag[1], 'num') else int(time_tag[1]) if len(time_tag) > 1 else 0
+            second = int(time_tag[2].num) if len(time_tag) > 2 and hasattr(time_tag[2], 'num') else int(time_tag[2]) if len(time_tag) > 2 else 0
+
+            return datetime.strptime(f"{date_str} {hour:02d}:{minute:02d}:{second:02d}", '%Y:%m:%d %H:%M:%S')
+
         if 'EXIF DateTimeOriginal' in tags:
             date_str = str(tags['EXIF DateTimeOriginal'].values)
             return datetime.strptime(date_str, '%Y:%m:%d %H:%M:%S')
+
         return None
     except:
         return None
