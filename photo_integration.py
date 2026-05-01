@@ -3,6 +3,9 @@ from pathlib import Path
 from typing import List, Dict, Optional
 from datetime import datetime, timedelta
 import exifread
+import base64
+
+def extract_gps_from_photo(photo_path: str) -> Optional[tuple]:
 
 class PhotoPoint:
     def __init__(self, filepath: str, lat: float, lon: float,
@@ -82,13 +85,22 @@ def match_photos_to_track(photo_dir: str, track_start_time: datetime,
 
                     time_offset_sec = (timestamp - track_start_time).total_seconds() + time_offset
                     if time_offset_sec >= 0:
+                        try:
+                            with open(filepath, 'rb') as img_file:
+                                img_data = base64.b64encode(img_file.read()).decode('utf-8')
+                                import imghdr
+                                img_type = imghdr.what(filepath) or 'jpeg'
+                                base64_url = f"data:image/{img_type};base64,{img_data}"
+                        except:
+                            base64_url = 'file://' + str(filepath.absolute())
+
                         photos.append({
                             'filepath': str(filepath),
                             'lat': gps[0],
                             'lon': gps[1],
                             'timestamp': timestamp,
                             'timeOffset': time_offset_sec,
-                            'url': str(filepath)
+                            'url': base64_url
                         })
             except Exception:
                 continue
