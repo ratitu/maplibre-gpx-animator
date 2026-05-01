@@ -112,57 +112,78 @@ def main():
             st.dataframe(df.head(100))
 
         if st.button("Generate Video", type="primary"):
-            with st.spinner("Generating video..."):
-                temp_dir = tempfile.mkdtemp()
-                html_path = Path(temp_dir) / "animation.html"
+            progress_bar = st.progress(0)
+            status_text = st.empty()
+            temp_dir = tempfile.mkdtemp()
+            html_path = Path(temp_dir) / "animation.html"
 
-                track_points = prepare_track_data(tracks)
-                duration = calculate_duration(tracks, speed_factor)
+            track_points = prepare_track_data(tracks)
+            duration = calculate_duration(tracks, speed_factor)
 
-                photos = []
-                if photo_dir and Path(photo_dir).exists():
-                    start_time = df['time'].min() if 'time' in df.columns and df['time'].notna().any() else None
-                    if start_time:
-                        photos = match_photos_to_track(photo_dir, start_time, track_points, time_offset)
+            photos = []
+            if photo_dir and Path(photo_dir).exists():
+                start_time = df['time'].min() if 'time' in df.columns and df['time'].notna().any() else None
+                if start_time:
+                    photos = match_photos_to_track(photo_dir, start_time, track_points, time_offset)
 
-                config = {
-                    "trackPoints": track_points,
-                    "duration": duration,
-                    "mapStyle": map_style,
-                    "center": center,
-                    "zoom": 13,
-                    "pitch": pitch,
-                    "bearing": bearing,
-                    "lineColor": line_color,
-                    "lineWidth": line_width,
-                    "markerSize": marker_size,
-                    "markerColor": marker_color,
-                    "followTrack": follow_track,
-                    "autoPlay": auto_play,
-                    "photos": photos if photos else None
-                }
+            config = {
+                "trackPoints": track_points,
+                "duration": duration,
+                "mapStyle": map_style,
+                "center": center,
+                "zoom": 13,
+                "pitch": pitch,
+                "bearing": bearing,
+                "lineColor": line_color,
+                "lineWidth": line_width,
+                "markerSize": marker_size,
+                "markerColor": marker_color,
+                "followTrack": follow_track,
+                "autoPlay": auto_play,
+                "photos": photos if photos else None
+            }
 
-                template = load_maplibre_template()
-                html_content = template.replace("__CONFIG__", json.dumps(config))
-                html_path.write_text(html_content)
+            template = load_maplibre_template()
+            html_content = template.replace("__CONFIG__", json.dumps(config))
+            html_path.write_text(html_content)
 
-                output_path = Path(temp_dir) / "output.mp4"
-                generator = VideoGenerator(temp_dir)
-                try:
-                    result = asyncio.run(
-                        generator.generate_video(
-                            str(html_path), duration, "output.mp4",
-                            fps, width, height
-                        )
+            generator = VideoGenerator(temp_dir)
+
+            def progress_callback(stage, current, total):
+                if stage == 'capture':
+                    if total > 0:
+                        capture_progress = current / total
+                        overall = capture_progress * 0.8
+                        status_text.text(f"🎥 Capturing frames: {current}/{total} ({capture_progress:.1%})")
+                    else:
+                        overall = 0
+                elif stage == 'encode':
+                    encode_progress = current / total if total > 0 else 1.0
+                    overall = 0.8 + encode_progress * 0.2
+                    status_text.text("🎬 Encoding video with FFmpeg...")
+                else:
+                    overall = 0
+                progress_bar.progress(min(overall, 1.0))
+
+            try:
+                result = asyncio.run(
+                    generator.generate_video(
+                        str(html_path), duration, "output.mp4",
+                        fps, width, height, progress_callback=progress_callback
                     )
-                    st.video(result)
-                    with open(result, 'rb') as f:
-                        st.download_button("Download Video", f, "animation.mp4", "video/mp4")
-                except Exception as e:
-                    st.error(f"Error generating video: {str(e)}")
-                    st.info("Make sure playwright and ffmpeg are installed: playwright install && apt install ffmpeg")
-                finally:
-                    generator.cleanup()
+                )
+                progress_bar.progress(1.0)
+                status_text.text("✅ Video generated successfully!")
+                st.video(result)
+                with open(result, 'rb') as f:
+                    st.download_button("Download Video", f, "animation.mp4", "video/mp4")
+            except Exception as e:
+                progress_bar.progress(1.0)
+                status_text.text("❌ Error generating video")
+                st.error(f"Error: {str(e)}")
+                st.info("Make sure playwright and ffmpeg are installed: `playwright install` and `apt install ffmpeg`")
+            finally:
+                generator.cleanup()
 
 if __name__ == "__main__":
     main()

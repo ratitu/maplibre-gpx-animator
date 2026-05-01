@@ -13,7 +13,8 @@ class VideoGenerator:
         self.temp_dir = Path(tempfile.mkdtemp())
 
     async def capture_frames(self, html_path: str, duration: float, fps: int = 30,
-                            width: int = 1920, height: int = 1080) -> List[str]:
+                            width: int = 1920, height: int = 1080,
+                            progress_callback=None) -> List[str]:
         from playwright.async_api import async_playwright
 
         frame_dir = self.temp_dir / "frames"
@@ -38,12 +39,18 @@ class VideoGenerator:
                 await page.screenshot(path=str(frame_path))
                 frame_paths.append(str(frame_path))
 
+                if progress_callback and frame % max(1, total_frames // 100) == 0:
+                    progress_callback('capture', frame, total_frames)
+
+            if progress_callback:
+                progress_callback('capture', total_frames, total_frames)
             await browser.close()
 
         return frame_paths
 
     def frames_to_video(self, frame_paths: List[str], output_path: str,
-                        fps: int = 30, width: int = 1920, height: int = 1080) -> str:
+                         fps: int = 30, width: int = 1920, height: int = 1080,
+                         progress_callback=None) -> str:
         frame_pattern = str(Path(frame_paths[0]).parent / "frame_%06d.png")
 
         cmd = [
@@ -58,17 +65,24 @@ class VideoGenerator:
             output_path
         ]
 
+        if progress_callback:
+            progress_callback('encode', 0, 1)
+
         subprocess.run(cmd, capture_output=True, check=True)
+
+        if progress_callback:
+            progress_callback('encode', 1, 1)
+
         return output_path
 
     async def generate_video(self, html_path: str, duration: float,
                              output_filename: str = "animation.mp4",
                              fps: int = 30, width: int = 1920,
-                             height: int = 1080) -> str:
+                             height: int = 1080, progress_callback=None) -> str:
         output_path = str(self.output_dir / output_filename)
 
-        frame_paths = await self.capture_frames(html_path, duration, fps, width, height)
-        self.frames_to_video(frame_paths, output_path, fps, width, height)
+        frame_paths = await self.capture_frames(html_path, duration, fps, width, height, progress_callback)
+        self.frames_to_video(frame_paths, output_path, fps, width, height, progress_callback)
 
         return output_path
 
