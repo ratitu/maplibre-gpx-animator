@@ -61,22 +61,25 @@ def match_photos_to_track(photo_dir: str, track_start_time: datetime,
 
     for filepath in Path(photo_dir).glob('*'):
         if filepath.suffix.lower() in photo_extensions:
-            timestamp = extract_timestamp_from_photo(str(filepath))
-            gps = extract_gps_from_photo(str(filepath))
+            try:
+                timestamp = extract_timestamp_from_photo(str(filepath))
+                gps = extract_gps_from_photo(str(filepath))
 
-            if timestamp and gps:
-                if hasattr(timestamp, 'to_pydatetime'):
-                    timestamp = timestamp.to_pydatetime()
+                if timestamp and gps:
+                    if hasattr(timestamp, 'to_pydatetime'):
+                        timestamp = timestamp.to_pydatetime()
 
-                time_offset_sec = (timestamp - track_start_time).total_seconds() + time_offset
-                if time_offset_sec >= 0:
-                    photos.append({
-                        'filepath': str(filepath),
-                        'lat': gps[0],
-                        'lon': gps[1],
-                        'timestamp': timestamp,
-                        'timeOffset': time_offset_sec,
-                        'url': str(filepath)
-                    })
+                    time_offset_sec = (timestamp - track_start_time).total_seconds() + time_offset
+                    if time_offset_sec >= 0:
+                        photos.append({
+                            'filepath': str(filepath),
+                            'lat': gps[0],
+                            'lon': gps[1],
+                            'timestamp': timestamp,
+                            'timeOffset': time_offset_sec,
+                            'url': str(filepath)
+                        })
+            except Exception:
+                continue
 
     return sorted(photos, key=lambda x: x['timeOffset'])
