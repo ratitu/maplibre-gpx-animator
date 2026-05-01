@@ -65,12 +65,10 @@ def match_photos_to_track(photo_dir: str, track_start_time: datetime,
             gps = extract_gps_from_photo(str(filepath))
 
             if timestamp and gps:
-                if hasattr(track_start_time, 'to_pydatetime'):
-                    track_start_time_dt = track_start_time.to_pydatetime()
-                else:
-                    track_start_time_dt = track_start_time
+                if hasattr(timestamp, 'to_pydatetime'):
+                    timestamp = timestamp.to_pydatetime()
 
-                time_offset_sec = (timestamp - track_start_time_dt).total_seconds() + time_offset
+                time_offset_sec = (timestamp - track_start_time).total_seconds() + time_offset
                 if time_offset_sec >= 0:
                     photos.append({
                         'filepath': str(filepath),
