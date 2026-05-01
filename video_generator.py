@@ -27,7 +27,12 @@ class VideoGenerator:
             page = await browser.new_page(viewport={'width': width, 'height': height})
             await page.goto(f"file://{html_path}", wait_until='networkidle')
 
-            await page.wait_for_timeout(2000)
+            await page.wait_for_timeout(3000)
+
+            try:
+                await page.wait_for_function("isMapReady === true", timeout=10000)
+            except:
+                pass
 
             total_frames = int(duration * fps)
             for frame in range(total_frames):

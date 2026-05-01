@@ -68,7 +68,7 @@
     <script>
         const config = __CONFIG__;
         let map, animationId, currentTime = 0, isPlaying = false, startTime = 0;
-        let trackPoints = [], totalDistance = 0, distances = [], times = [];
+        let trackPoints = [], totalDistance = 0, distances = [], times = [], isMapReady = false;
 
         function initMap() {
             map = new maplibregl.Map({
@@ -159,6 +159,7 @@
             }
 
             setupAnimation();
+            isMapReady = true;
         }
 
         function setupAnimation() {
@@ -198,6 +199,8 @@
         }
 
         function updatePosition(progress) {
+            if (!isMapReady || trackPoints.length === 0) return;
+
             const idx = progress * (trackPoints.length - 1);
             const floorIdx = Math.floor(idx);
             const ceilIdx = Math.min(Math.ceil(idx), trackPoints.length - 1);
