@@ -51,10 +51,13 @@ class VideoGenerator:
     def frames_to_video(self, frame_paths: List[str], output_path: str,
                          fps: int = 30, width: int = 1920, height: int = 1080,
                          progress_callback=None) -> str:
+        import imageio_ffmpeg
+        ffmpeg_exe = imageio_ffmpeg.get_ffmpeg_exe()
+
         frame_pattern = str(Path(frame_paths[0]).parent / "frame_%06d.png")
 
         cmd = [
-            'ffmpeg', '-y',
+            ffmpeg_exe, '-y',
             '-framerate', str(fps),
             '-i', frame_pattern,
             '-c:v', 'libx264',

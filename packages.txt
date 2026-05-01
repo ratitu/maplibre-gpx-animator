@@ -13,4 +13,3 @@ libasound2
 libxshmfence1
 libx11-xcb1
 libgtk-3-0
-ffmpeg
