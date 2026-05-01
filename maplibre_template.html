@@ -239,9 +239,9 @@
             document.getElementById('distance').textContent = currentDist.toFixed(2);
             document.getElementById('speed').textContent = speed.toFixed(1);
 
-            if (config.photos) {
-                showPhotoAtTime(progress * config.duration);
-            }
+             if (config.photos) {
+                 showPhotoAtPosition(lat, lon);
+             }
 
             if (window.opener) {
                 window.opener.postMessage({ type: 'frame', progress: progress }, '*');
@@ -257,17 +257,23 @@
             updatePosition(val);
         }
 
-        function showPhotoAtTime(timeSec) {
-            if (!config.photos) return;
-            const photo = config.photos.find(p => Math.abs(p.timeOffset - timeSec) < (p.duration || 5));
-            const overlay = document.getElementById('photoOverlay');
-            if (photo) {
-                document.getElementById('photoImg').src = photo.url;
-                overlay.style.display = 'block';
-            } else {
-                overlay.style.display = 'none';
-            }
-        }
+         function showPhotoAtPosition(lat, lon) {
+             if (!config.photos || !config.photos.length) return;
+             const overlay = document.getElementById('photoOverlay');
+             const threshold = config.photoProximity || 0.05;
+
+             const photo = config.photos.find(p => {
+                 const d = turf.distance([lon, lat], [p.lon, p.lat], {units: 'kilometers'});
+                 return d < threshold;
+             });
+
+             if (photo) {
+                 document.getElementById('photoImg').src = photo.url;
+                 overlay.style.display = 'block';
+             } else {
+                 overlay.style.display = 'none';
+             }
+         }
 
         function formatTime(seconds) {
             const m = Math.floor(seconds / 60);

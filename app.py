@@ -113,7 +113,7 @@ def main():
         with st.expander("Preview Track Data"):
             st.dataframe(df.head(100))
 
-        if st.button("Generate Video", type="primary"):
+            if st.button("Generate Video", type="primary"):
             progress_bar = st.progress(0)
             status_text = st.empty()
             temp_dir = tempfile.mkdtemp()
@@ -130,13 +130,9 @@ def main():
                     photo_path = photo_dir_temp / photo.name
                     with open(photo_path, 'wb') as f:
                         f.write(photo.getvalue())
-                start_time = df['time'].min() if 'time' in df.columns and df['time'].notna().any() else None
-                if start_time:
-                    photos = match_photos_to_track(str(photo_dir_temp), start_time, track_points, time_offset)
+                photos = match_photos_to_track(str(photo_dir_temp), track_points)
             elif photo_dir and Path(photo_dir).exists():
-                start_time = df['time'].min() if 'time' in df.columns and df['time'].notna().any() else None
-                if start_time:
-                    photos = match_photos_to_track(photo_dir, start_time, track_points, time_offset)
+                photos = match_photos_to_track(photo_dir, track_points)
 
             config = {
                 "trackPoints": track_points,
@@ -152,7 +148,8 @@ def main():
                 "markerColor": marker_color,
                 "followTrack": follow_track,
                 "autoPlay": auto_play,
-                "photos": photos if photos else None
+                "photos": photos if photos else None,
+                "photoProximity": 0.05
             }
 
             template = load_maplibre_template()

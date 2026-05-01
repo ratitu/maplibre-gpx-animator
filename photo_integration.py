@@ -61,13 +61,9 @@ def extract_timestamp_from_photo(photo_path: str) -> Optional[datetime]:
     except Exception:
         return None
 
-def match_photos_to_track(photo_dir: str, track_start_time: datetime,
-                          track_points: list, time_offset: float = 0) -> List[Dict]:
+def match_photos_to_track(photo_dir: str, track_points: list) -> List[Dict]:
     photos = []
     photo_extensions = {'.jpg', '.jpeg', '.png', '.heic', '.tiff'}
-
-    if hasattr(track_start_time, 'to_pydatetime'):
-        track_start_time = track_start_time.to_pydatetime()
 
     for filepath in Path(photo_dir).glob('*'):
         if filepath.suffix.lower() in photo_extensions:
@@ -75,29 +71,23 @@ def match_photos_to_track(photo_dir: str, track_start_time: datetime,
                 timestamp = extract_timestamp_from_photo(str(filepath))
                 gps = extract_gps_from_photo(str(filepath))
 
-                if timestamp and gps:
-                    if hasattr(timestamp, 'to_pydatetime'):
-                        timestamp = timestamp.to_pydatetime()
+                if gps:
+                    try:
+                        with open(str(filepath), 'rb') as img_file:
+                            img_data = base64.b64encode(img_file.read()).decode('utf-8')
+                            img_type = imghdr.what(str(filepath)) or 'jpeg'
+                            base64_url = f"data:image/{img_type};base64,{img_data}"
+                    except Exception:
+                        base64_url = 'file://' + str(filepath.absolute())
 
-                    time_offset_sec = (timestamp - track_start_time).total_seconds() + time_offset
-                    if time_offset_sec >= 0:
-                        try:
-                            with open(str(filepath), 'rb') as img_file:
-                                img_data = base64.b64encode(img_file.read()).decode('utf-8')
-                                img_type = imghdr.what(str(filepath)) or 'jpeg'
-                                base64_url = f'data:image/{img_type};base64,{img_data}'
-                        except Exception:
-                            base64_url = 'file://' + str(filepath.absolute())
-
-                        photos.append({
-                            'filepath': str(filepath),
-                            'lat': gps[0],
-                            'lon': gps[1],
-                            'timestamp': timestamp,
-                            'timeOffset': time_offset_sec,
-                            'url': base64_url
-                        })
+                    photos.append({
+                        'filepath': str(filepath),
+                        'lat': gps[0],
+                        'lon': gps[1],
+                        'timestamp': timestamp,
+                        'url': base64_url
+                    })
             except Exception:
                 continue
 
-    return sorted(photos, key=lambda x: x['timeOffset'])
+    return photos
