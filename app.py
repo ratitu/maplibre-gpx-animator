@@ -79,7 +79,9 @@ def main():
         height = st.selectbox("Height", [720, 1080, 2160], index=1)
 
         st.subheader("Photos")
-        photo_dir = st.text_input("Photo Directory (optional)")
+        photo_dir = st.text_input("Photo Directory (optional - local only)")
+        uploaded_photos = st.file_uploader("Or upload photos (for Streamlit Cloud)",
+                                            type=['jpg', 'jpeg', 'png'], accept_multiple_files=True)
         time_offset = st.number_input("Time Offset (seconds)", value=0.0)
 
     uploaded_file = st.file_uploader("Upload GPX File", type=['gpx'])
@@ -121,7 +123,17 @@ def main():
             duration = calculate_duration(tracks, speed_factor)
 
             photos = []
-            if photo_dir and Path(photo_dir).exists():
+            if uploaded_photos:
+                photo_dir_temp = Path(temp_dir) / "photos"
+                photo_dir_temp.mkdir(exist_ok=True)
+                for photo in uploaded_photos:
+                    photo_path = photo_dir_temp / photo.name
+                    with open(photo_path, 'wb') as f:
+                        f.write(photo.getvalue())
+                start_time = df['time'].min() if 'time' in df.columns and df['time'].notna().any() else None
+                if start_time:
+                    photos = match_photos_to_track(str(photo_dir_temp), start_time, track_points, time_offset)
+            elif photo_dir and Path(photo_dir).exists():
                 start_time = df['time'].min() if 'time' in df.columns and df['time'].notna().any() else None
                 if start_time:
                     photos = match_photos_to_track(photo_dir, start_time, track_points, time_offset)
