@@ -81,8 +81,7 @@ def main():
         st.subheader("Photos")
         photo_dir = st.text_input("Photo Directory (optional - local only)")
         uploaded_photos = st.file_uploader("Or upload photos (for Streamlit Cloud)",
-                                            type=['jpg', 'jpeg', 'png'], accept_multiple_files=True)
-        time_offset = st.number_input("Time Offset (seconds)", value=0.0)
+                                        type=['jpg', 'jpeg', 'png'], accept_multiple_files=True)
 
     uploaded_file = st.file_uploader("Upload GPX File", type=['gpx'])
 
@@ -113,7 +112,7 @@ def main():
         with st.expander("Preview Track Data"):
             st.dataframe(df.head(100))
 
-            if st.button("Generate Video", type="primary"):
+        if st.button("Generate Video", type="primary"):
             progress_bar = st.progress(0)
             status_text = st.empty()
             temp_dir = tempfile.mkdtemp()
