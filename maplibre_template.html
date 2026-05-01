@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>GPX Animation</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src='https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js'></script>
+    <link href='https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css' rel='stylesheet' />
+    <script src='https://unpkg.com/@turf/turf@6/turf.min.js'></script>
+    <style>
+        body { margin: 0; padding: 0; overflow: hidden; }
+        #map { position: absolute; top: 0; bottom: 0; width: 100%; }
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.7);
+            padding: 10px 20px;
+            border-radius: 8px;
+            color: white;
+            font-family: Arial, sans-serif;
+            z-index: 1000;
+        }
+        #progress {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.7);
+            padding: 10px;
+            border-radius: 8px;
+            color: white;
+            font-family: Arial, sans-serif;
+            z-index: 1000;
+        }
+        .photo-overlay {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            max-width: 300px;
+            max-height: 200px;
+            z-index: 1000;
+            border-radius: 8px;
+            overflow: hidden;
+            display: none;
+        }
+        .photo-overlay img {
+            width: 100%;
+            height: auto;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <div id="progress">
+        <div>Time: <span id="time">00:00</span></div>
+        <div>Distance: <span id="distance">0.00</span> km</div>
+        <div>Speed: <span id="speed">0.0</span> km/h</div>
+    </div>
+    <div id="controls">
+        <button id="playPause">⏵</button>
+        <input type="range" id="seekbar" min="0" max="100" value="0" style="width: 300px;">
+    </div>
+    <div id="photoOverlay" class="photo-overlay">
+        <img id="photoImg" src="">
+    </div>
+
+    <script>
+        const config = __CONFIG__;
+        let map, animationId, currentTime = 0, isPlaying = false, startTime = 0;
+        let trackPoints = [], totalDistance = 0, distances = [], times = [];
+
+        function initMap() {
+            map = new maplibregl.Map({
+                container: 'map',
+                style: config.mapStyle,
+                center: config.center,
+                zoom: config.zoom,
+                pitch: config.pitch || 0,
+                bearing: config.bearing || 0,
+                antialias: true
+            });
+
+            map.on('load', () => {
+                loadTrackData();
+            });
+        }
+
+        function loadTrackData() {
+            trackPoints = config.trackPoints;
+
+            let dist = 0;
+            distances = [0];
+            times = trackPoints.map(p => p.time);
+
+            for (let i = 1; i < trackPoints.length; i++) {
+                const from = trackPoints[i-1], to = trackPoints[i];
+                dist += turf.distance([from.lon, from.lat], [to.lon, to.lat], {units: 'kilometers'});
+                distances.push(dist);
+            }
+            totalDistance = dist;
+
+            const coords = trackPoints.map(p => [p.lon, p.lat]);
+            map.addSource('track', {
+                type: 'geojson',
+                data: { type: 'Feature', geometry: { type: 'LineString', coordinates: coords } }
+            });
+
+            map.addLayer({
+                id: 'track-line',
+                type: 'line',
+                source: 'track',
+                paint: {
+                    'line-color': config.lineColor || '#ff0000',
+                    'line-width': config.lineWidth || 4,
+                    'line-opacity': 0.5
+                }
+            });
+
+            map.addSource('animated-track', {
+                type: 'geojson',
+                data: { type: 'Feature', geometry: { type: 'LineString', coordinates: [] } }
+            });
+
+            map.addLayer({
+                id: 'animated-line',
+                type: 'line',
+                source: 'animated-track',
+                paint: {
+                    'line-color': config.lineColor || '#ff0000',
+                    'line-width': config.lineWidth || 4
+                }
+            });
+
+            map.addSource('marker', {
+                type: 'geojson',
+                data: { type: 'Feature', geometry: { type: 'Point', coordinates: coords[0] } }
+            });
+
+            map.addLayer({
+                id: 'marker-layer',
+                type: 'circle',
+                source: 'marker',
+                paint: {
+                    'circle-radius': config.markerSize || 8,
+                    'circle-color': config.markerColor || '#ff0000',
+                    'circle-stroke-color': '#ffffff',
+                    'circle-stroke-width': 2
+                }
+            });
+
+            if (config.followTrack) {
+                map.on('moveend', () => {
+                    if (isPlaying) {
+                        const idx = Math.floor((currentTime / config.duration) * (trackPoints.length - 1));
+                        map.panTo([trackPoints[idx].lon, trackPoints[idx].lat]);
+                    }
+                });
+            }
+
+            setupAnimation();
+        }
+
+        function setupAnimation() {
+            document.getElementById('playPause').onclick = togglePlay;
+            document.getElementById('seekbar').oninput = seek;
+
+            if (config.autoPlay) {
+                togglePlay();
+            }
+        }
+
+        function togglePlay() {
+            isPlaying = !isPlaying;
+            document.getElementById('playPause').textContent = isPlaying ? '⏸' : '⏵';
+            if (isPlaying) {
+                startTime = performance.now() - currentTime;
+                animate();
+            } else {
+                cancelAnimationFrame(animationId);
+            }
+        }
+
+        function animate() {
+            if (!isPlaying) return;
+            currentTime = performance.now() - startTime;
+            const progress = Math.min(currentTime / (config.duration * 1000), 1);
+
+            updatePosition(progress);
+            document.getElementById('seekbar').value = progress * 100;
+
+            if (progress >= 1) {
+                isPlaying = false;
+                document.getElementById('playPause').textContent = '⏵';
+                return;
+            }
+            animationId = requestAnimationFrame(animate);
+        }
+
+        function updatePosition(progress) {
+            const idx = progress * (trackPoints.length - 1);
+            const floorIdx = Math.floor(idx);
+            const ceilIdx = Math.min(Math.ceil(idx), trackPoints.length - 1);
+            const frac = idx - floorIdx;
+
+            let lon, lat;
+            if (floorIdx === ceilIdx) {
+                lon = trackPoints[floorIdx].lon;
+                lat = trackPoints[floorIdx].lat;
+            } else {
+                lon = trackPoints[floorIdx].lon + (trackPoints[ceilIdx].lon - trackPoints[floorIdx].lon) * frac;
+                lat = trackPoints[floorIdx].lat + (trackPoints[ceilIdx].lat - trackPoints[floorIdx].lat) * frac;
+            }
+
+            const currentDist = progress * totalDistance;
+            const currentIdx = Math.floor(progress * (times.length - 1));
+            let speed = 0;
+            if (currentIdx > 0 && times[currentIdx] && times[currentIdx-1]) {
+                const dt = (times[currentIdx] - times[currentIdx-1]) / 3600;
+                const dx = distances[currentIdx] - distances[currentIdx-1];
+                speed = dt > 0 ? dx / dt : 0;
+            }
+
+            map.getSource('marker').setData({ type: 'Feature', geometry: { type: 'Point', coordinates: [lon, lat] } });
+
+            const trackIdx = Math.floor(idx);
+            const animatedCoords = trackPoints.slice(0, trackIdx + 1).map(p => [p.lon, p.lat]);
+            map.getSource('animated-track').setData({ type: 'Feature', geometry: { type: 'LineString', coordinates: animatedCoords } });
+
+            if (config.followTrack) {
+                map.panTo([lon, lat]);
+            }
+
+            document.getElementById('time').textContent = formatTime(progress * config.duration);
+            document.getElementById('distance').textContent = currentDist.toFixed(2);
+            document.getElementById('speed').textContent = speed.toFixed(1);
+
+            if (config.photos) {
+                showPhotoAtTime(progress * config.duration);
+            }
+
+            if (window.opener) {
+                window.opener.postMessage({ type: 'frame', progress: progress }, '*');
+            }
+        }
+
+        function seek() {
+            const val = parseFloat(document.getElementById('seekbar').value) / 100;
+            currentTime = val * config.duration * 1000;
+            if (isPlaying) {
+                startTime = performance.now() - currentTime;
+            }
+            updatePosition(val);
+        }
+
+        function showPhotoAtTime(timeSec) {
+            if (!config.photos) return;
+            const photo = config.photos.find(p => Math.abs(p.timeOffset - timeSec) < (p.duration || 5));
+            const overlay = document.getElementById('photoOverlay');
+            if (photo) {
+                document.getElementById('photoImg').src = photo.url;
+                overlay.style.display = 'block';
+            } else {
+                overlay.style.display = 'none';
+            }
+        }
+
+        function formatTime(seconds) {
+            const m = Math.floor(seconds / 60);
+            const s = Math.floor(seconds % 60);
+            return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+        }
+
+        initMap();
+    </script>
+</body>
+</html>
