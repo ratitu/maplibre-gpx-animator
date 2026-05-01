@@ -5,6 +5,8 @@ import os
 from pathlib import Path
 import shutil
 import asyncio
+import os
+os.system("playwright install")
 
 from gpx_parser import parse_gpx_file, get_track_bounds, tracks_to_dataframe
 from video_generator import VideoGenerator
