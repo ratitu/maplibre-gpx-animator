@@ -4,17 +4,7 @@ from typing import List, Dict, Optional
 from datetime import datetime, timedelta
 import exifread
 import base64
-
-def extract_gps_from_photo(photo_path: str) -> Optional[tuple]:
-
-class PhotoPoint:
-    def __init__(self, filepath: str, lat: float, lon: float,
-                 timestamp: datetime, url: Optional[str] = None):
-        self.filepath = filepath
-        self.lat = lat
-        self.lon = lon
-        self.timestamp = timestamp
-        self.url = url or filepath
+import imghdr
 
 def extract_gps_from_photo(photo_path: str) -> Optional[tuple]:
     try:
@@ -33,7 +23,7 @@ def extract_gps_from_photo(photo_path: str) -> Optional[tuple]:
             lon = -lon
 
         return lat, lon
-    except:
+    except Exception:
         return None
 
 def _convert_to_degrees(value):
@@ -51,9 +41,15 @@ def extract_timestamp_from_photo(photo_path: str) -> Optional[datetime]:
             date_str = str(tags['GPS GPSDateStamp'].values)
             time_tag = tags['GPS GPSTimeStamp'].values
 
-            hour = int(time_tag[0].num) if hasattr(time_tag[0], 'num') else int(time_tag[0])
-            minute = int(time_tag[1].num) if len(time_tag) > 1 and hasattr(time_tag[1], 'num') else int(time_tag[1]) if len(time_tag) > 1 else 0
-            second = int(time_tag[2].num) if len(time_tag) > 2 and hasattr(time_tag[2], 'num') else int(time_tag[2]) if len(time_tag) > 2 else 0
+            hour = 0
+            minute = 0
+            second = 0
+            if len(time_tag) > 0:
+                hour = int(time_tag[0].num) if hasattr(time_tag[0], 'num') else int(time_tag[0])
+            if len(time_tag) > 1:
+                minute = int(time_tag[1].num) if hasattr(time_tag[1], 'num') else int(time_tag[1])
+            if len(time_tag) > 2:
+                second = int(time_tag[2].num) if hasattr(time_tag[2], 'num') else int(time_tag[2])
 
             return datetime.strptime(f"{date_str} {hour:02d}:{minute:02d}:{second:02d}", '%Y:%m:%d %H:%M:%S')
 
@@ -62,7 +58,7 @@ def extract_timestamp_from_photo(photo_path: str) -> Optional[datetime]:
             return datetime.strptime(date_str, '%Y:%m:%d %H:%M:%S')
 
         return None
-    except:
+    except Exception:
         return None
 
 def match_photos_to_track(photo_dir: str, track_start_time: datetime,
@@ -86,12 +82,11 @@ def match_photos_to_track(photo_dir: str, track_start_time: datetime,
                     time_offset_sec = (timestamp - track_start_time).total_seconds() + time_offset
                     if time_offset_sec >= 0:
                         try:
-                            with open(filepath, 'rb') as img_file:
+                            with open(str(filepath), 'rb') as img_file:
                                 img_data = base64.b64encode(img_file.read()).decode('utf-8')
-                                import imghdr
-                                img_type = imghdr.what(filepath) or 'jpeg'
-                                base64_url = f"data:image/{img_type};base64,{img_data}"
-                        except:
+                                img_type = imghdr.what(str(filepath)) or 'jpeg'
+                                base64_url = f'data:image/{img_type};base64,{img_data}'
+                        except Exception:
                             base64_url = 'file://' + str(filepath.absolute())
 
                         photos.append({
