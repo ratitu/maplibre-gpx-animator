@@ -56,6 +56,9 @@ def match_photos_to_track(photo_dir: str, track_start_time: datetime,
     photos = []
     photo_extensions = {'.jpg', '.jpeg', '.png', '.heic', '.tiff'}
 
+    if hasattr(track_start_time, 'to_pydatetime'):
+        track_start_time = track_start_time.to_pydatetime()
+
     for filepath in Path(photo_dir).glob('*'):
         if filepath.suffix.lower() in photo_extensions:
             timestamp = extract_timestamp_from_photo(str(filepath))
