@@ -199,9 +199,10 @@
         }
 
         function updatePosition(progress) {
-            if (!isMapReady || trackPoints.length === 0) return;
+            if (!isMapReady || !trackPoints || trackPoints.length === 0) return;
 
             const idx = progress * (trackPoints.length - 1);
+            if (idx < 0) return;
             const floorIdx = Math.floor(idx);
             const ceilIdx = Math.min(Math.ceil(idx), trackPoints.length - 1);
             const frac = idx - floorIdx;
