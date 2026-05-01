@@ -5,22 +5,8 @@ import os
 from pathlib import Path
 import shutil
 import asyncio
-import subprocess
-import sys
 
-def ensure_dependencies():
-    try:
-        subprocess.run(['ffmpeg', '-version'], capture_output=True, check=True)
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        st.warning("Installing ffmpeg...")
-        subprocess.run([sys.executable, '-m', 'pip', 'install', 'imageio[ffmpeg]'], check=False)
-
-    try:
-        subprocess.run(['playwright', '--version'], capture_output=True, check=True)
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        subprocess.run(['playwright', 'install', 'chromium'], check=False)
-
-ensure_dependencies()
+os.system("playwright install chromium")
 
 from gpx_parser import parse_gpx_file, get_track_bounds, tracks_to_dataframe
 from video_generator import VideoGenerator
