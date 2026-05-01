@@ -54,7 +54,7 @@ def main():
             "Map Style",
             ["https://demotiles.maplibre.org/style.json",
              "https://api.maptiler.com/maps/streets/style.json",
-             "https://api.maptiler.com/maps/satellite/style.json"
+             "https://api.maptiler.com/maps/satellite/style.json",
              "https://api.maptiler.com/tiles/satellite-v2/?key=5J6LSxFCnDpZwnDcop1e#1.0/0.00000/0.00000"]
         )
 
