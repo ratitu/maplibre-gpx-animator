@@ -53,10 +53,6 @@ def extract_timestamp_from_photo(photo_path: str) -> Optional[datetime]:
 
             return datetime.strptime(f"{date_str} {hour:02d}:{minute:02d}:{second:02d}", '%Y:%m:%d %H:%M:%S')
 
-        if 'EXIF DateTimeOriginal' in tags:
-            date_str = str(tags['EXIF DateTimeOriginal'].values)
-            return datetime.strptime(date_str, '%Y:%m:%d %H:%M:%S')
-
         return None
     except Exception:
         return None
@@ -84,7 +80,7 @@ def match_photos_to_track(photo_dir: str, track_points: list) -> List[Dict]:
                         'filepath': str(filepath),
                         'lat': gps[0],
                         'lon': gps[1],
-                        'timestamp': timestamp,
+                        'timestamp': timestamp.isoformat() if timestamp else None,
                         'url': base64_url
                     })
             except Exception:
