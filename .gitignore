@@ -15,3 +15,5 @@ output/
 *.png
 temp/
 .DS_Store
+.*.swp
+*.swp
