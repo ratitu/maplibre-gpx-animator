@@ -71,9 +71,11 @@ def main():
         if map_mode == "3D":
             pitch = st.slider("Pitch", 0, 60, 45)
             bearing = st.slider("Bearing", 0, 360, 0)
+            elevation_exaggeration = st.slider("Elevation Exaggeration", 1.0, 10.0, 3.0)
         else:
             pitch = 0
             bearing = 0
+            elevation_exaggeration = 1.0
 
         st.subheader("Video")
         fps = st.selectbox("FPS", [24, 30, 60], index=1)
@@ -143,6 +145,7 @@ def main():
                 "zoom": int(zoom_level),
                 "pitch": int(pitch),
                 "bearing": int(bearing),
+                "elevationExaggeration": float(elevation_exaggeration),
                 "lineColor": line_color,
                 "lineWidth": int(line_width),
                 "markerSize": int(marker_size),
