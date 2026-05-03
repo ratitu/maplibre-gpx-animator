@@ -57,6 +57,8 @@ def main():
              "https://api.maptiler.com/maps/satellite/style.json?key=5J6LSxFCnDpZwnDcop1e"]
         )
 
+        zoom_level = st.slider("Map Zoom Level", 1, 20, 13)
+
         st.subheader("Animation")
         speed_factor = st.slider("Speed Factor", 0.5, 5.0, 1.0, 0.5)
         line_color = st.color_picker("Track Color", "#ff0000")
@@ -138,7 +140,7 @@ def main():
                 "duration": float(duration),
                 "mapStyle": map_style,
                 "center": [float(center[0]), float(center[1])],
-                "zoom": 13,
+                "zoom": int(zoom_level),
                 "pitch": int(pitch),
                 "bearing": int(bearing),
                 "lineColor": line_color,
